@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Product Dashboard — Single-file Example</title>
+  <meta name="description" content="A modern single-file website demonstrating HTML, CSS, JavaScript and JSON for data exchange & storage." />
+
+  <style>
+    :root{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --muted:#94a3b8;
+      --accent:#7c3aed;
+      --glass: rgba(255,255,255,0.04);
+      --radius:14px;
+      --gap:16px;
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#071025 0%,var(--bg) 100%);color:#e6eef8}
+
+    .app{max-width:1100px;margin:28px auto;padding:20px}
+    header{display:flex;gap:16px;align-items:center;justify-content:space-between}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#4f46e5);display:flex;align-items:center;justify-content:center;font-weight:700}
+    h1{margin:0;font-size:20px}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+
+    .controls{display:flex;gap:10px;align-items:center}
+    input[type=search]{background:var(--glass);border:1px solid rgba(255,255,255,0.03);padding:10px 12px;border-radius:10px;color:inherit;min-width:220px}
+    select,button{padding:9px 12px;border-radius:10px;border:0;background:linear-gradient(90deg,var(--accent),#4f46e5);color:white;cursor:pointer}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+
+    main{margin-top:26px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--gap)}
+
+    .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));padding:16px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+    .card h3{margin:0 0 6px 0}
+    .meta{color:var(--muted);font-size:13px;margin-bottom:10px}
+    .badge{display:inline-block;padding:6px 8px;border-radius:999px;background:rgba(255,255,255,0.03);font-size:12px}
+
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+
+    .panel{display:flex;gap:12px;align-items:center;margin-top:18px}
+
+    footer{margin-top:26px;color:var(--muted);font-size:13px;text-align:center}
+
+    /* modal */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:28px}
+    .modal.open{display:flex}
+    .dialog{width:100%;max-width:680px;background:linear-gradient(180deg,#071226, #08152a);border-radius:16px;padding:18px;border:1px solid rgba(255,255,255,0.04)}
+
+    form .row{display:flex;gap:10px}
+    label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+    input[type=text],textarea{width:100%;padding:9px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    textarea{min-height:90px}
+
+    @media (max-width:640px){header{flex-direction:column;align-items:flex-start}.controls{width:100%;justify-content:space-between}input[type=search]{min-width:120px}}
+
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header>
+      <div class="brand">
+        <div class="logo">PD</div>
+        <div>
+          <h1>Product Dashboard</h1>
+          <p class="lead">Single-file demo: HTML • CSS • JavaScript • JSON</p>
+        </div>
+      </div>
+
+      <div class="controls">
+        <input id="q" type="search" placeholder="Search products, tags..." />
+        <select id="sort">
+          <option value="new">Newest</option>
+          <option value="az">A → Z</option>
+          <option value="price-asc">Price ↑</option>
+          <option value="price-desc">Price ↓</option>
+        </select>
+        <button id="addBtn">Add</button>
+        <button id="exportBtn" class="ghost">Export JSON</button>
+        <button id="importBtn" class="ghost">Import JSON</button>
+      </div>
+    </header>
+
+    <main>
+      <div class="toolbar">
+        <div class="card" style="flex:1">
+          <strong id="count">0</strong>
+          <div class="meta">Products loaded</div>
+        </div>
+        <div class="card" style="width:220px">
+          <div class="meta">Local persistence</div>
+          <div>Auto-save to <code>localStorage</code></div>
+        </div>
+      </div>
+
+      <section>
+        <div id="grid" class="grid" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <footer>
+      Built with plain HTML/CSS/JS. Try adding/editing/exporting the JSON dataset.
+    </footer>
+  </div>
+
+  <!-- Modal (for add / detail) -->
+  <div id="modal" class="modal" role="dialog" aria-hidden="true">
+    <div class="dialog" role="document">
+      <h3 id="modalTitle">Add product</h3>
+      <form id="form">
+        <div class="row">
+          <div style="flex:1">
+            <label for="title">Title</label>
+            <input id="title" name="title" type="text" required />
+          </div>
+          <div style="width:120px">
+            <label for="price">Price</label>
+            <input id="price" name="price" type="text" required />
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <label for="tags">Tags (comma separated)</label>
+          <input id="tags" name="tags" type="text" />
+        </div>
+        <div style="margin-top:10px">
+          <label for="desc">Description</label>
+          <textarea id="desc" name="desc"></textarea>
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button type="button" id="cancel">Cancel</button>
+          <button type="submit">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- sample JSON embedded for easy access; a real app would fetch this from an API -->
+  <script id="seed-data" type="application/json">
+  [
+    {"id":"p1","title":"Lab Scanner A1","price":1299,"tags":["scanner","hardware","lab"],"desc":"Compact barcode scanner for manufacturing labels.","created":"2024-11-10"},
+    {"id":"p2","title":"Label Ribbon 50m","price":29,"tags":["supplies","labels"],"desc":"Thermal ribbon for high-contrast printing.","created":"2025-02-02"},
+    {"id":"p3","title":"Calibration Kit","price":249,"tags":["service","calibration"],"desc":"Calibration kit for preserving measurement accuracy.","created":"2025-05-18"}
+  ]
+  </script>
+
+  <input id="fileInput" type="file" accept="application/json" style="display:none" />
+
+  <script>
+  // Simple app demonstrating interactivity and JSON import/export.
+  (() => {
+    const q = document.getElementById('q');
+    const grid = document.getElementById('grid');
+    const count = document.getElementById('count');
+    const addBtn = document.getElementById('addBtn');
+    const modal = document.getElementById('modal');
+    const form = document.getElementById('form');
+    const cancel = document.getElementById('cancel');
+    const modalTitle = document.getElementById('modalTitle');
+    const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+    const fileInput = document.getElementById('fileInput');
+    const sortSelect = document.getElementById('sort');
+
+    let data = JSON.parse(document.getElementById('seed-data').textContent);
+
+    // Load from localStorage if present
+    try{
+      const saved = localStorage.getItem('productData_v1');
+      if(saved){ data = JSON.parse(saved); }
+    }catch(e){console.warn('local load failed',e)}
+
+    function saveLocal(){
+      try{ localStorage.setItem('productData_v1', JSON.stringify(data)); }
+      catch(e){ console.warn('save failed', e); }
+    }
+
+    function render(list){
+      grid.innerHTML = '';
+      count.textContent = list.length;
+      if(list.length === 0){ grid.innerHTML = '<div class="card">No products found</div>'; return; }
+
+      for(const item of list){
+        const el = document.createElement('article');
+        el.className = 'card';
+        el.innerHTML = `
+          <h3>${escapeHtml(item.title)}</h3>
+          <div class="meta">${item.tags.map(t => `<span class="badge">${escapeHtml(t)}</span>`).join(' ')}</div>
+          <div style="margin:8px 0">${escapeHtml(item.desc || '')}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="meta">${item.created || ''}</div>
+            <div>
+              <button class="ghost" data-id="${item.id}" data-action="view">View</button>
+              <button class="ghost" data-id="${item.id}" data-action="delete">Delete</button>
+            </div>
+          </div>
+        `;
+        grid.appendChild(el);
+      }
+    }
+
+    function escapeHtml(s){ return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]); }
+
+    function openModal(mode='add', item=null){
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      if(mode==='add'){
+        modalTitle.textContent = 'Add product';
+        form.title.value = '';
+        form.price.value = '';
+        form.tags.value = '';
+        form.desc.value = '';
+        form.dataset.mode = 'add';
+      }else if(mode==='edit'){
+        modalTitle.textContent = 'Edit product';
+        form.title.value = item.title;
+        form.price.value = item.price;
+        form.tags.value = item.tags.join(', ');
+        form.desc.value = item.desc;
+        form.dataset.mode = 'edit';
+        form.dataset.id = item.id;
+      }else if(mode==='view'){
+        modalTitle.textContent = 'Product details';
+        form.title.value = item.title; form.price.value = item.price; form.tags.value = item.tags.join(', '); form.desc.value = item.desc;
+        form.querySelectorAll('input,textarea').forEach(i => i.setAttribute('disabled','')); 
+        form.dataset.mode = 'view';
+      }
+    }
+    function closeModal(){
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      form.querySelectorAll('input,textarea').forEach(i => i.removeAttribute('disabled'));
+      delete form.dataset.id; delete form.dataset.mode;
+    }
+
+    // search + sort pipeline
+    function getFiltered(){
+      const qv = q.value.trim().toLowerCase();
+      let out = data.slice();
+      if(qv){ out = out.filter(it => (it.title||'').toLowerCase().includes(qv) || (it.tags||[]).some(t => t.toLowerCase().includes(qv)) || (it.desc||'').toLowerCase().includes(qv)); }
+      const s = sortSelect.value;
+      if(s==='az'){ out.sort((a,b)=> (a.title||'').localeCompare(b.title||'')); }
+      if(s==='price-asc'){ out.sort((a,b)=> (a.price||0)-(b.price||0)); }
+      if(s==='price-desc'){ out.sort((a,b)=> (b.price||0)-(a.price||0)); }
+      if(s==='new'){ out.sort((a,b)=> new Date(b.created||0)-new Date(a.created||0)); }
+      return out;
+    }
+
+    // events
+    q.addEventListener('input', () => render(getFiltered()));
+    sortSelect.addEventListener('change', () => render(getFiltered()));
+
+    grid.addEventListener('click', e => {
+      const btn = e.target.closest('button');
+      if(!btn) return;
+      const id = btn.dataset.id; const action = btn.dataset.action;
+      if(action==='view'){
+        const item = data.find(d=>d.id===id);
+        if(item) openModal('view', item);
+      }else if(action==='delete'){
+        if(confirm('Delete this item?')){
+          data = data.filter(d=>d.id!==id); saveLocal(); render(getFiltered());
+        }
+      }
+    });
+
+    addBtn.addEventListener('click', () => openModal('add'));
+    cancel.addEventListener('click', () => closeModal());
+    modal.addEventListener('click', e => { if(e.target===modal) closeModal(); });
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const mode = form.dataset.mode;
+      const obj = {
+        id: mode==='edit' ? form.dataset.id : 'p' + Math.random().toString(36).slice(2,9),
+        title: form.title.value.trim(),
+        price: Number(form.price.value) || 0,
+        tags: form.tags.value.split(',').map(s=>s.trim()).filter(Boolean),
+        desc: form.desc.value.trim(),
+        created: new Date().toISOString().slice(0,10)
+      };
+      if(mode==='edit'){
+        data = data.map(d => d.id===obj.id ? {...d,...obj} : d);
+      }else{
+        data.unshift(obj);
+      }
+      saveLocal(); render(getFiltered()); closeModal();
+    });
+
+    // export JSON
+    exportBtn.addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'products.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+    // import JSON
+    importBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (ev) => {
+      const f = ev.target.files && ev.target.files[0];
+      if(!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try{
+          const parsed = JSON.parse(reader.result);
+          if(Array.isArray(parsed)){
+            data = parsed; saveLocal(); render(getFiltered()); alert('Imported ' + parsed.length + ' products.');
+          }else{ alert('JSON should be an array of objects.'); }
+        }catch(err){ alert('Invalid JSON: ' + err.message); }
+      };
+      reader.readAsText(f);
+      fileInput.value = '';
+    });
+
+    // initial render
+    render(getFiltered());
+  })();
+  </script>
+</body>
+</html>
